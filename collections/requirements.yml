@@ -1,3 +1,2 @@
-collections:
-  - name: ansible.netcommon.network_cli
+- name: ansible.netcommon.network_cli
   
