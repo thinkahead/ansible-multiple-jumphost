@@ -1,0 +1,3 @@
+collections:
+  - name: ansible.netcommon.network_cli
+    version: 2.0.0
