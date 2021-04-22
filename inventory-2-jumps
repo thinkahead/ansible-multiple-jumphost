@@ -1,0 +1,32 @@
+[server]
+lab.example.com
+
+[server:vars]
+ansible_user=vagrant
+# Custom location of ssh config is supported with standard ssh connection plugin
+ansible_ssh_common_args='-F ssh.cfg'
+ansible_ssh_private_key_file=~/.ssh/vagrant_rsa
+
+[network]
+device.example.com ansible_host=127.0.0.1
+
+[network:vars]
+ansible_user=root
+ansible_password=root
+ansible_port=3080
+#ansible_ssh_private_key_file=~/.ssh/vagrant_rsa
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=cisco.ios.ios
+# https://github.com/ansible/pylibssh
+ansible_network_cli_ssh_type=libssh
+
+# Define variables for multiple jump hosts 
+jh_private_key = ~/.ssh/vagrant_rsa
+
+# 2 jump hosts
+ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -i {{ jh_private_key }} -W %h:%p -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oProxyCommand='ssh -i {{ jh_private_key }} -W lab.example.com:22 vagrant@jh2.example.com' vagrant@lab.example.com"
+
+[all:vars]
+ansible_python_interpreter=python3
+
+

@@ -1,0 +1,8 @@
+---
+- hosts: server
+  gather_facts: false
+
+
+  tasks:
+  - name: Run a simple command
+    command: "echo this works"
