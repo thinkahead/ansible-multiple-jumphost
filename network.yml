@@ -5,5 +5,5 @@
 
   tasks:
   - name: run show version command
-    cli_command:
+    ansible.netcommon.cli_command:
       command: show version
