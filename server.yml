@@ -6,3 +6,4 @@
   tasks:
   - name: Run a simple command
     command: "echo this works"
+    
