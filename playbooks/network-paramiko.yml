@@ -1,9 +1,8 @@
 ---
-- hosts: network
+- hosts: network_paramiko
   gather_facts: false
-
 
   tasks:
   - name: run show version command
-    ansible.netcommon.cli_command:
+    cli_command:
       command: show version

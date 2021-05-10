@@ -1,5 +1,8 @@
+---
+# Install collections locally using the following command:
+# ansible-galaxy collection install -r collections/requirements.yml -f
+
 collections:
   - name: ansible.netcommon
-    version: 2.0.0
   - name: cisco.ios
-    version: 2.0.0
+  - name: awx.awx
