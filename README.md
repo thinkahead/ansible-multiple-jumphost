@@ -36,11 +36,17 @@ Instead of using an ssh config file, the jumps can alternatively be defined by u
 ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W %h:%p -q {{ jh1_ssh_user }}@{{ jh1_ip }}"
 ```
 
+This uses an environment variable and extra variables to allow for a flexible solution. These can be set on the commandline or optimally using Ansible Tower's custom Credential Type, which will be explained later in this document. Additionally, a more advanced ProxyCommand will be required for handling 2 or 3 jumphosts. This is shown in the [inventory file](inventory).
+
 ## Connection Type
 
 For platform automation, Ansible uses the `ssh` connection plugin that supports OpenSSH.
 
 For network automation, Ansible has various connection plugins but `network_cli` is recommended. This plugin allows you to use either `paramiko` or `libssh` for the transport method. The `libssh` transport is preferred as it will be the standard going forward for future releases of Ansible. The `libssh` was first introduced with the Ansible collection `netcommon`. For more information see [new libssh connection plugin for ansible network](https://www.ansible.com/blog/new-libssh-connection-plugin-for-ansible-network).
+
+We have therefore defined the collection within our [collections/requirements.yml](collections/requirements.yml). Additionally we need to tell Ansible where to download the collections by adding options in the [setup.cfg](setup.cfg).
+
+Now we can download the collections and install the required python library to prepare for using libssh.
 
 ```bash
 # Download required collections
@@ -49,67 +55,102 @@ ansible-galaxy collection install -r collections/requirements.yml -f
 pip install ansible-pylibssh
 ```
 
+## Accessing API
+
+As previously stated, having one or more jumphosts often impacts accessing any API services on that destination infrastructure. For example, if we want to pull dynamic inventory from SolarWinds, Service Now, or others.
+
+We can handle this in a similar manner as we did above with server/network automation endpoints. However, slightly different approach. Instead of focusing on formulating the `ansible_ssh_common_args` variable to perform the jumps, we need to modify an existing dynamic inventory script and adapt it to support multiple jumps.
+
+In a recent case with a customer, we needed to pull dynamic inventory from SolarWinds, which was not directly available. We had an existing python-based dynamic inventory script that worked well but required a direct connection.
+
+The following changes were applied to the original python script. These changes can be easily adapted to any inventory script by understanding the techniques and applying them to your own situation.
+
+- The [jumpssh](https://jumpssh.readthedocs.io/en/latest/api.html) python module provides the ability to perform one or more jumps and prepare a [requests](https://docs.python-requests.org/en/master/) connection from a specific jumphost
+- Code was added to allow import of `jumpssh` and create a `requests` session
+- To allow flexibility in the inventory script, code was added to pull jumphost connectivity information using environment variables
+- Code is flexible and only prepares as many jumps as defined by the environment variables; if you only define 1 jump, then only 1 jump is configured.
+- Environment variables are injected either from commandline or using Ansible Tower custom Credential Type
+- Add the `jumpssh` python module to your Ansible virtual environment or existing Ansible Tower virtual environment
+
+    ```shell
+    pip install jumpssh
+    ```
+
+It is important to understand that the python code establishes a direct session with the target system over one or more jumps. However Ansible still is executing the python locally - it is not performed on a jumphost.
+
 ## Solution
+
+The following information covers the overarching solution.
+
+
 
 Inputs:
 
-[SolarWinds Credential Type - Inputs](solarwinds_credential_type_inputs.yml)
+[SolarWinds Credential Type - Inputs](tower_objects/solarwinds_credential_type_inputs.yml)
 
 Injectors:
 
-[SolarWinds Credential Type - Injectors](solarwinds_credential_type_injectors.yml)
+[SolarWinds Credential Type - Injectors](tower_objects/solarwinds_credential_type_injectors.yml)
 
 ## Demo Environment
 
-In order to test and demo this functionality we have used `vagrant` to spin up 3 jumphosts and run a network device emulator `fake-switches` on the 3rd jumphost.
+The following was used to develop and test functionality for multiple jump hosts.
+
+### Vagrant
+
+In order to test and demo this functionality `vagrant` was used to spin up the jumphosts.
+
+To test network automation using Ansible `network_cli` connection type, run the network device emulator `fake-switches` on one of your jump hosts. Depending on your situation, this may be the third jumphost or second, etc.
+
+```shell
+# Start machines
+vagrant up
+```
+
+### Network Emulator
+
+In order to fully develop and test functionality against a network device, the emulator [fake-switches](https://github.com/internap/fake-switches) was used as a dummy network device that could accept basic network switch commands.
+
+To run `fake-switches` from one of the jumphosts you will need to provision the server using the [custom shell script](scripts/python3.sh).
 
 ```shell
 # Start machines
 vagrant up
 
-# Start network device emulator
+# Login to final jumphost server
 vagrant ssh jh3
+# Provision server to install fake-switches
+chmod +x python3.sh
+./python3.sh
+
+# Start network device emulator
 fake-switches --listen-host localhost --listen-port 3080 --hostname switch.example.com
 ```
 
-Start a new terminal window, connect to `jh3` machine and test you can ssh to the network device service.
+Start a new terminal window, connect to the machine and test you can ssh to the network device service.
 
 ```shell
 vagrant ssh jh3
 ssh root@switch.example.com -p 3080 -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null
 ```
 
+### Inventory Emulator
 
+Additionally, SolarWinds was not available at the time so a [REST API emulator](scripts/restapi.py) was created that handles logins, and returns inventory structure similar to what would be expected from SolarWinds. It uses `flask` to rapidly develop a web service that accepts requests.
 
-export JH1_SSH_IP=jh1.example.com
-export JH1_SSH_PORT=22
-export JH1_SSH_USER=vagrant
-export JH1_SSH_PRIVATE_KEY=/Users/jwadleig/Projects/customer-ibm-dow/tower-multiple-jumphost/key-jh1
-export JH2_SSH_IP=jh2.example.com
-export JH2_SSH_PORT=22
-export JH2_SSH_USER=vagrant
-export JH2_SSH_PRIVATE_KEY=/Users/jwadleig/Projects/customer-ibm-dow/tower-multiple-jumphost/key-jh2
-export JH3_SSH_IP=jh3.example.com
-export JH3_SSH_PORT=22
-export JH3_SSH_USER=vagrant
-export JH3_SSH_PRIVATE_KEY=/Users/jwadleig/Projects/customer-ibm-dow/tower-multiple-jumphost/key-jh3
+It can easily be adapted for other systems or services.
 
-
-## Accessing API from Jumphost
-
-With the above multi-jump situation we might also require Ansible Tower to pull dynamic inventory from a remote source that can only be reached from a specific jumphost (a direct connection cannot be established due to security reasons). We can handle this in a similar manner as we did above with server/network automation endpoints. However, slightly different approach. Instead of focusing on formulating the `ansible_ssh_common_args` variable to perform the jumps, we need to modify an existing dynamic inventory script and adapt it to support multiple jumps.
-
-In the case with an existing customer, we needed to pull dynamic inventory from SolarWinds, which was not directly available. We had an existing python-based dynamic inventory script that worked well with a direct connection. The following major changes were added to the original working script. These changes can be adapted to any inventory script by understanding the techniques and applying them to your own situation.
-
-- The `jumpssh` python module provides the ability to perform the 3 jumps and prepare a `requests` connection from a specific jumphost
-- Inventory script needed to pull environment variables that provided connectivity information for all jumphosts
-
-Run the SolarWinds dynamic inventory script.
-
-Add to your Ansible Tower virtual environment:
+To run the emulator, login to the final jump host server and run the python script.
 
 ```shell
-pip install jumpssh
+# Login to final jumphost server
+vagrant ssh jh3
+# Provision server to install python if not done already
+chmod +x python3.sh
+./python3.sh
+
+# Start REST API emulator
+python restapi.py
 ```
 
 ## Troubleshooting

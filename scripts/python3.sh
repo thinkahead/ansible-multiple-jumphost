@@ -36,5 +36,5 @@ pip install --upgrade pip
 pip install cryptography==3.0
 pip install fake-switches
 
-# Run fake-switches
-#fake-switches --listen-host localhost --listen-port 3080
+# Install rest-api dependencies
+pip install flask flask_httpauth
