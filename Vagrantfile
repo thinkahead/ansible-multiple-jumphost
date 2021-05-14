@@ -18,9 +18,9 @@ Vagrant.configure("2") do |config|
       vb.memory = "1024"
     end
 
-    # authentication
-    config.ssh.insert_key = false
-    config.vm.provision "file", source: "~/.ssh/vagrant_rsa.pub", destination: "~/.ssh/authorized_keys"
+    # authentication - unique private keys for each machine
+    config.ssh.insert_key = true
+    #config.vm.provision "file", source: "~/.ssh/vagrant_rsa.pub", destination: "~/.ssh/authorized_keys"
 
     # vagrant-hostmanager => manages /etc/hosts entries on host and guest machines
     if Vagrant.has_plugin?('vagrant-hostmanager')
@@ -59,9 +59,9 @@ Vagrant.configure("2") do |config|
         end
 
         # Prepare simulated network device - Install Python3 and fake-switches project
-        if ['jh3'].include?(name)
-          machine.vm.provision :shell, path: "python3.sh"
-        end
+        #if ['jh3'].include?(name)
+        machine.vm.provision "file", source: "scripts/python3.sh", destination: "~/python3.sh"
+        #end
 
       end
     end

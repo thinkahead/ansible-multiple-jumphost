@@ -40,6 +40,7 @@ import configparser
 # MULTIPLE JUMPHOST SUPPORT
 # (optional) pip install --upgrade distribute
 # pip install jumpssh
+# https://github.com/AmadeusITGroup/JumpSSH
 from jumpssh import SSHSession
 from jumpssh import RestSshClient
 
