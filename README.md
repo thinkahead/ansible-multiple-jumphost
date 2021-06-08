@@ -76,21 +76,54 @@ The following changes were applied to the original python script. These changes 
     pip install jumpssh
     ```
 
-It is important to understand that the python code establishes a direct session with the target system over one or more jumps. However Ansible still is executing the python locally - it is not performed on a jumphost.
+It is important to understand that the python code establishes a direct session with the target system over one or more jumps. However Ansible still is executing the python locally - it is not performed on the jumphost.
 
 ## Solution
 
-The following information covers the overarching solution.
+The following information covers the overarching solution. In our specific case we wanted the following:
 
+- Pull dynamic inventory data from SolarWinds
+- Target the network devices using `network_cli` and `libssh`
 
+To support those requirements, the following actions were done.
 
-Inputs:
+- Create `Credential Type` within Ansible Tower using the following inputs and injectors.
+  - [SolarWinds Credential Type - Inputs](tower_objects/credential_type_inputs.yml)
+  - [SolarWinds Credential Type - Injectors](tower_objects/credential_type_injectors.yml)
+- Create `Credential` within Ansible Tower based on the new Credential Type
+  - Set all necessary jumphost fields
+  - If only 1 jumphost, then only set fields pertaining to jumphost 1
+  - Set all fields for SolarWinds
+- Add the `jumpssh` python module to your Ansible Tower virtual environment
+  - [How do I Install Packages Inside the Ansible venv for Ansible Tower?](https://access.redhat.com/solutions/3062141)
+  - [Using virtualenv with Ansible Tower](https://docs.ansible.com/ansible-tower/latest/html/upgrade-migration-guide/virtualenv.html#using-virtualenv-with-at)
+- Create new `Inventory Script` within Ansible Tower
+  - Paste the [Python inventory script](./solarwinds/solarwinds.py)
 
-[SolarWinds Credential Type - Inputs](tower_objects/solarwinds_credential_type_inputs.yml)
+Now that we have created all the necessary objects, we can create the Inventory within Ansible Tower.
 
-Injectors:
+- Create `Inventory` within Ansible Tower.
+  - Set the `Variables` field with the proper `ansible_ssh_common_args` value (depending on how many jumphosts you have). See above for explanation.
+- Create `Inventory Source` within the same Inventory object
+  - Select `Custom Script` for Source
+  - Select the correct Ansible Environment that contains the `jumpssh` module
+  - Set the `Credential` field to the Credential created earlier
+  - Set `Custom Inventory Script` to the new inventory script that was created earlier
+  - Enable both `Overwrite` and `Overwrite Variables` options
+  - (Optional) Enable the `Update on Launch` option to force inventory sync whenever related Job Template is launched
+  - Set the `Environment Variables` field with any necessary SolarWinds settings. Review all settings from [env.sh](./solarwinds/env.sh). For example:
 
-[SolarWinds Credential Type - Injectors](tower_objects/solarwinds_credential_type_injectors.yml)
+      ```yaml
+      ---
+      SW_HOSTNAME_FIELD: SysName
+      SW_CATEGORY_FIELD: MachineType
+      SW_QUERY: "SELECT SysName, DNS, IP, MachineType FROM Orion.Nodes"
+      SW_HOSTVAR_FIELDS: "SysName,DNS,MachineType"
+      ```
+
+  - Save the inventory source
+- Synchronize the Inventory Source to pull data back from SolarWinds
+- Review the data returned and customize the environment variables as needed to get expected results
 
 ## Demo Environment
 
