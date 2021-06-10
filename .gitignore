@@ -1,3 +1,4 @@
 ansible_collections
 *.pyc
 key-*
+.vagrant

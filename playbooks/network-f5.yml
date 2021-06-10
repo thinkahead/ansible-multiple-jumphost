@@ -1,0 +1,26 @@
+---
+# Target `f5` inventory group to save facts against the f5 servers
+- hosts: f5
+  gather_facts: false
+
+  tasks:
+  - name: Get facts from F5
+    f5networks.f5_modules.bigip_device_info:
+      gather_subset:
+        - interfaces
+      provider:
+        server: "{{ inventory_hostname }}"
+        server_port: "{{ f5_provider_port }}"
+        user: "{{ f5_provider_user }}"
+        password: "{{ f5_provider_password }}"
+        validate_certs: "{{ f5_provider_validate }}"
+    # Delegate task to the defined jumphost that performs the rest_api call
+    delegate_to: rest_api_server
+    # Facts should be saved against the f5 entry in inventory (not jumphost)
+    delegate_facts: false
+    # Run only once regardless of inventory
+    run_once: true
+
+  - name: Show facts were saved against F5
+    debug:
+      msg: "{{ ansible_facts }}"

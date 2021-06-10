@@ -30,6 +30,19 @@ switch_paramiko
 ansible_network_os=ios
 ansible_connection=network_cli
 
+[network_rest_api]
+# Ensure connectivity by using `ansible -i inventory rest_api_server -m ping -vvvv`
+rest_api_server ansible_host=jh3.example.com
+
+[network_rest_api:vars]
+ansible_port = 22
+ansible_user = vagrant
+ansible_ssh_private_key_file = {{ lookup('env', 'JH3_SSH_PRIVATE_KEY') }}
+ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand='ssh -i {{ lookup('env', 'JH2_SSH_PRIVATE_KEY') }} -W %h:%p -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oProxyCommand="ssh -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W {{ jh2_ip }}:{{ jh2_ssh_port }} {{ jh1_ssh_user }}@{{ jh1_ip }}" {{ jh2_ssh_user }}@{{ jh2_ip }}'
+
+[f5]
+lb.mydomain.com f5_provider_port=22023 f5_provider_user=admin f5_provider_password=secret f5_provider_validate=no
+
 [all:vars]
 ansible_python_interpreter=python3
 
@@ -53,8 +66,11 @@ jh3_ssh_user = vagrant
 # Single Jump - Ansible Tower formatting
 #ansible_ssh_common_args: -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand='ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W %h:%p -q {{ jh1_ssh_user }}@{{ jh1_ip }}'
 # Single Jump - Commandline formatting
-ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W %h:%p -q {{ jh1_ssh_user }}@{{ jh1_ip }}"
+#ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W %h:%p -q {{ jh1_ssh_user }}@{{ jh1_ip }}"
 
 
 # Double Jump - Command line formatting
-#ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -i {{ jh_private_key }} -W %h:%p -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oProxyCommand='ssh -i {{ jh_private_key }} -W lab.example.com:22 vagrant@jh2.example.com' vagrant@lab.example.com"
+#ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand='ssh -i {{ lookup('env', 'JH2_SSH_PRIVATE_KEY') }} -W %h:%p -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oProxyCommand="ssh -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W {{ jh2_ip }}:{{ jh2_ssh_port }} {{ jh1_ssh_user }}@{{ jh1_ip }}" {{ jh2_ssh_user }}@{{ jh2_ip }}'
+
+# Double Jump - Ansible Tower formatting
+#ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand='ssh -i {{ lookup('env', 'JH2_SSH_PRIVATE_KEY') }} -W %h:%p -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oProxyCommand='ssh -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W {{ jh2_ip }}:{{ jh2_ssh_port }} {{ jh1_ssh_user }}@{{ jh1_ip }}' {{ jh2_ssh_user }}@{{ jh2_ip }}'
