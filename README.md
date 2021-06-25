@@ -30,7 +30,9 @@ However in some cases you may not be able to use an ssh `config` file as this pr
 
 ### Option 2 - Using ProxyCommand
 
-Instead of using an ssh config file, the jumps can alternatively be defined by using the `ProxyCommand` SSH option. For a single jump, it's fairly straightforward and we set the `ansible_ssh_common_args` variable within our inventory to point to the single jumphost. Notice that it's critical to add the extra options `-oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null` to ignore host key checking for both the jumphost and the target host/device. If you do not add this, you may get a strange "banner" error message from SSH that is very difficult to analyze.
+Instead of using an ssh config file, the jumps can alternatively be defined by using the `ProxyCommand` SSH option. Note that you cannot use `ProxyJump` (a newer option that is meant to simplify the ProxyCommand argument) because this argument does not allow defining multiple jumps on the commandline with different ssh keys for each jump.
+
+For a single jump, it's fairly straightforward and we set the `ansible_ssh_common_args` variable within our inventory to point to the single jumphost. Notice that it's critical to add the extra options `-oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null` to ignore host key checking for both the jumphost and the target host/device. If you do not add this, you may get a strange "banner" error message from SSH that is very difficult to analyze.
 
 ```ini
 ansible_ssh_common_args= -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -o ProxyCommand="ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i {{ lookup('env', 'JH1_SSH_PRIVATE_KEY') }} -W %h:%p -q {{ jh1_ssh_user }}@{{ jh1_ip }}"
