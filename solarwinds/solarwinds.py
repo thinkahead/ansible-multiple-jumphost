@@ -168,15 +168,15 @@ class SwInventory(object):
 
         final_session = None
         if jumphost1_ip:
-            jump1 = SSHSession(host=jumphost1_ip, port=jumphost1_port, username=jumphost1_user,
+            jump1 = SSHSession(host=jumphost1_ip, port=int(jumphost1_port), username=jumphost1_user,
                 private_key_file=jumphost1_privatekey).open()
             final_session = jump1
         if jumphost2_ip:
-            jump2 = jump1.get_remote_session(host=jumphost2_ip, port=jumphost2_port, username=jumphost2_user, 
+            jump2 = jump1.get_remote_session(host=jumphost2_ip, port=int(jumphost2_port), username=jumphost2_user, 
                 private_key_file=jumphost2_privatekey)
             final_session = jump2
         if jumphost3_ip:
-            jump3 = jump2.get_remote_session(host=jumphost3_ip, port=jumphost3_port, username=jumphost3_user, 
+            jump3 = jump2.get_remote_session(host=jumphost3_ip, port=int(jumphost3_port), username=jumphost3_user, 
                 private_key_file=jumphost3_privatekey)
             final_session = jump3
         if final_session:
